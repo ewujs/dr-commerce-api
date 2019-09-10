@@ -21,7 +21,7 @@ class AccessToken {
 
   public async getSessionToken(): Promise<string> {
     try {
-      const url = `https://${this.gcDomain}/store/${this.siteId}/SessionToken`;
+      const url = `https://${this.gcDomain}/store/${this.siteId}/SessionToken?format=json`;
       const response = await axios.get(url);
 
       return response.data.session_token;
@@ -33,11 +33,10 @@ class AccessToken {
   public async getAccessToken(): Promise<string> {
     try {
       const sessionToken = await this.getSessionToken();
-      const url = `https://${this.apiDomain}/oauth20/token`;
+      const url = `https://${this.apiDomain}/oauth20/token.json`;
       const response = await axios.post(url, {
         dr_session_token: sessionToken,
-        grant_type: 'password',
-        format: 'json'
+        grant_type: 'password'
       }, {
         auth: {
           username: this.apiKey,
@@ -53,7 +52,29 @@ class AccessToken {
     }
   }
 
-  public async getFullAccessToken(extRefId: string ): Promise<string> {
+  public async getFullAccessToken(extRefId: string): Promise<string> {
+    try {
+      if (!this.accessToken) {
+        await this.getAccessToken();
+      }
 
+      const url = `https://${this.apiDomain}/oauth20/token.json`;
+      const response = await axios.post(url, {
+        grant_type: 'client_credentials',
+        dr_external_reference_id: extRefId,
+        dr_limited_token: this.accessToken
+      }, {
+        auth: {
+          username: this.apiKey,
+          password: this.apiSecret
+        }
+      });
+
+      this.fullAccessToken = response.data.token.access_token;
+
+      return this.fullAccessToken;
+    } catch (error) {
+      console.error(error);
+    }
   }
 }
